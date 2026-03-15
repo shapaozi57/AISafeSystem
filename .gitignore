@@ -1,0 +1,14 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+server/.env
+server/node_modules/
+server/dist/
+*.local
+.cursor/
