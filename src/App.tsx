@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
 interface DetectionResult {
   riskLevel: '低风险' | '中风险' | '高风险';
   suggestion: string;
@@ -100,7 +102,7 @@ export default function App() {
 
   const deleteReport = async (id: string) => {
     try {
-      const resp = await fetch(`http://localhost:4000/api/history/${id}`, {
+      const resp = await fetch(`${API_BASE}/api/history/${id}`, {
         method: 'DELETE'
       });
       if (!resp.ok) return;
@@ -124,16 +126,28 @@ export default function App() {
       return;
     }
 
+    const username = regData.username.trim();
+    if (!username) {
+      setRegError('请输入用户名');
+      return;
+    }
+
     try {
-      const resp = await fetch('http://localhost:4000/api/auth/register', {
+      const resp = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: regData.username,
+          username,
           password: regData.password
         })
       });
-      const data = await resp.json();
+      let data: { error?: string; detail?: string } = {};
+      try {
+        data = await resp.json();
+      } catch {
+        setRegError(resp.ok ? '注册失败，请重试' : '服务器响应异常，请稍后重试');
+        return;
+      }
       if (!resp.ok) {
         const msg = data.detail ? `${data.error}（${data.detail}）` : (data.error || '注册失败');
         setRegError(msg);
@@ -144,7 +158,7 @@ export default function App() {
       setRegData({ username: '', password: '', confirmPassword: '' });
     } catch (err) {
       console.error('Register failed:', err);
-      setRegError('注册失败，请稍后重试');
+      setRegError('无法连接服务器，请检查网络或稍后重试');
     }
   };
 
@@ -158,7 +172,7 @@ export default function App() {
     }
 
     try {
-      const resp = await fetch('http://localhost:4000/api/auth/login', {
+      const resp = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData)
@@ -197,7 +211,7 @@ export default function App() {
   const fetchHistory = async () => {
     if (!user) return;
     try {
-      const resp = await fetch(`http://localhost:4000/api/history?userId=${user.id}`);
+      const resp = await fetch(`${API_BASE}/api/history?userId=${user.id}`);
       const data = await resp.json();
       if (resp.ok) setHistoryReports(data.reports || []);
     } catch (err) {
@@ -208,7 +222,7 @@ export default function App() {
   const fetchStats = async () => {
     if (!user) return;
     try {
-      const resp = await fetch(`http://localhost:4000/api/detect/stats?userId=${user.id}`);
+      const resp = await fetch(`${API_BASE}/api/detect/stats?userId=${user.id}`);
       const data = await resp.json();
       if (resp.ok && data.detectionCount !== undefined) {
         setStats({ detectionCount: data.detectionCount ?? 0, studentsHelped: data.studentsHelped ?? 0 });
@@ -275,7 +289,7 @@ export default function App() {
       reader.onloadend = async () => {
         const base64Data = (reader.result as string).split(',')[1];
         try {
-          const resp = await fetch('http://localhost:4000/api/detect/voice', {
+          const resp = await fetch(`${API_BASE}/api/detect/voice`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -326,7 +340,7 @@ export default function App() {
     
     setIsDetecting(true);
     try {
-      const resp = await fetch('http://localhost:4000/api/detect/text', {
+      const resp = await fetch(`${API_BASE}/api/detect/text`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
