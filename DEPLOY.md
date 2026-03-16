@@ -1,30 +1,34 @@
-# 后端部署到 Railway（其他设备可登录/注册）
+# 后端部署（带语音）到 Render（推荐）
 
-前端在 Vercel，后端需单独部署。按下面步骤用 **Railway** 部署后端，约 5 分钟。
+前端在 Vercel，后端需单独部署。为支持 **ffmpeg 语音转码**，这里推荐用 **Render + Dockerfile** 部署后端。
 
----
-
-## 1. 注册并创建项目
-
-1. 打开 [railway.app](https://railway.app)，用 GitHub 登录。
-2. 点击 **Start a New Project** → **Deploy from GitHub repo**。
-3. 选择你的仓库 `shapaozi57/AISafeSystem`（若未列出，先点 **Configure GitHub** 授权）。
+> 如果你已经按 Railway 部署过，可以把 Railway 服务停用/删除，改用 Render 即可。
 
 ---
 
-## 2. 指定后端目录并构建
+## 1. 注册并创建 Web Service
 
-1. 在项目里选中刚创建的 **Service**（一个方块）。
-2. 点 **Settings**（或齿轮图标）。
-3. 找到 **Root Directory**：点击 **Set**，填 **`server`**，保存。  
-   （这样 Railway 会在 `server/` 下执行 `npm run build` 和 `npm start`。）
+1. 打开 [render.com](https://render.com)，用 GitHub 登录。
+2. 点击 **New +** → **Web Service**。
+3. 选择你的仓库 `shapaozi57/AISafeSystem`（若未列出，先在 Render 设置里授权 GitHub）。
+
+---
+
+## 2. 选择 Docker 构建
+
+在创建 Web Service 的向导里：
+
+1. **Environment** 选择 `Docker`。
+2. Render 会自动检测到仓库根目录的 `Dockerfile`，保持默认即可。
+3. **Name** 可自定义一个名字，例如 `aisafesystem-server`。
+4. 其他选项保持默认，点击 **Create Web Service**。
 
 ---
 
 ## 3. 配置环境变量
 
-1. 在同一个 Service 里点 **Variables** 标签。
-2. 点击 **+ New Variable** 或 **Add variables from .env**，把下面变量填进去（值从本机 `server/.env` 里复制，不要用示例里的占位符）：
+1. 在该 Web Service 页面顶部，点 **Environment**。
+2. 在 **Environment Variables** 区域点击 **+ Add Environment Variable**，把下面变量填进去（值从本机 `server/.env` 里复制，不要用示例里的占位符）：
 
 | 变量名 | 说明 |
 |--------|------|
@@ -36,16 +40,16 @@
 
 | 变量名 | 说明 |
 |--------|------|
-| `PORT` | 一般不填，Railway 会自动注入 |
+| `PORT` | 通常不需要手动设置，Render 会注入 `PORT`，代码会优先使用它 |
 | `BAIDU_QIANFAN_MODEL` | 默认 `ernie-3.5-8k`，可改 |
 
 ---
 
 ## 4. 部署并拿到域名
 
-1. 保存后 Railway 会自动重新部署。
-2. 点 **Settings** → **Networking** → **Generate Domain**，会得到一个类似 `xxx.railway.app` 的地址。
-3. 复制该地址（例如 `https://aisafesystem-server-production-xxxx.up.railway.app`），**不要**末尾斜杠。
+1. 填完环境变量后，Render 会自动触发一次构建（Build）和启动（Deploy）。
+2. 在该 Web Service 顶部可以看到一个生成的 URL，例如 `https://aisafesystem-server.onrender.com`。
+3. 复制该地址（例如 `https://aisafesystem-server.onrender.com`），**不要**末尾斜杠。
 
 ---
 
@@ -68,6 +72,6 @@
 
 ## 常见问题
 
-- **Build 失败**：确认 Root Directory 已设为 `server`，且仓库里包含 `server/package.json` 和 `server/tsconfig.json`。
-- **运行时报错 SUPABASE_URL / KEY 未设置**：在 Railway 的 Variables 里再检查变量名是否与上面一致，保存后会自动重新部署。
+- **Build 失败**：查看 Render 的 **Events / Logs**，确认 `Dockerfile` 在仓库根目录，且能成功 `npm ci` 与 `npm run build`。
+- **运行时报错 SUPABASE_URL / KEY 未设置**：在 Render 的 Environment Variables 里再检查变量名是否与上面一致，保存后会自动重新部署。
 - **其他设备仍无法登录**：确认 Vercel 已配置 `VITE_API_URL` 并已 Redeploy；用手机直接访问 `https://你的后端地址/api/health` 能打开再试。
