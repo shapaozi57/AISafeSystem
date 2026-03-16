@@ -27,7 +27,10 @@ function parseEnvFile(envPath: string): Map<string, string> {
   return out;
 }
 
+/** 优先使用 process.env（部署平台注入），其次读 .env 文件 */
 export function loadEnvValue(key: string): string | undefined {
+  const fromProcess = process.env[key];
+  if (fromProcess !== undefined && fromProcess !== '') return fromProcess;
   for (const envPath of possibleEnvPaths) {
     try {
       if (!fs.existsSync(envPath)) continue;
