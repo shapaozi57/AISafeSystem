@@ -1,4 +1,4 @@
-FROM node:18-bullseye
+FROM node:20-bullseye
 
 # 安装 ffmpeg，用于语音 webm -> wav 转码
 RUN apt-get update && \
@@ -14,7 +14,8 @@ COPY server/src ./server/src
 
 WORKDIR /app/server
 
-RUN npm ci --omit=dev && npm run build
+# 需要 devDependencies 里的 typescript（tsc）来编译
+RUN npm ci && npm run build
 
 ENV NODE_ENV=production
 
