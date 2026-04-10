@@ -12,3 +12,6 @@ server/node_modules/
 server/dist/
 *.local
 .cursor/
+
+# 本地临时截图等，勿提交
+c6825314-2321-482d-ac3c-cd90382d8686.png

@@ -5,6 +5,20 @@ import { webmBase64ToWavBase64 } from '../webmToWav';
 
 export const detectRouter = Router();
 
+function parseModelJson(raw: string): any {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return {};
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      return {};
+    }
+  }
+}
+
 /** 获取当前账号的统计（今日检测次数、帮助同学数） */
 detectRouter.get('/stats', async (req, res) => {
   const userId = req.query.userId as string;
@@ -43,9 +57,17 @@ async function getStats(userId: string) {
     .eq('user_id', userId)
     .in('risk_level', ['中风险', '高风险']);
 
+  const { count: todayQaCount } = await supabase
+    .from('history_reports')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('type', '问答')
+    .gte('created_at', todayStart);
+
   return {
     detectionCount: detectionCount ?? 0,
-    studentsHelped: studentsHelped ?? 0
+    studentsHelped: studentsHelped ?? 0,
+    todayQaCount: todayQaCount ?? 0
   };
 }
 
@@ -67,19 +89,7 @@ detectRouter.post('/text', async (req, res) => {
 只返回JSON，不要其他文字。`;
 
     const raw = await baiduChat(prompt);
-    let parsed: any = {};
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) {
-        try {
-          parsed = JSON.parse(match[0]);
-        } catch {
-          parsed = {};
-        }
-      }
-    }
+    const parsed = parseModelJson(raw);
 
     const result = {
       riskLevel: parsed.riskLevel || '低风险',
@@ -153,19 +163,7 @@ detectRouter.post('/voice', async (req, res) => {
 只返回JSON，不要其他文字。`;
 
     const raw = await baiduChat(prompt);
-    let parsed: any = {};
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) {
-        try {
-          parsed = JSON.parse(match[0]);
-        } catch {
-          parsed = {};
-        }
-      }
-    }
+    const parsed = parseModelJson(raw);
 
     const result = {
       riskLevel: (parsed.riskLevel || '低风险') as '低风险' | '中风险' | '高风险',
@@ -190,6 +188,58 @@ detectRouter.post('/voice', async (req, res) => {
       result: {
         riskLevel: '低风险',
         suggestion: '语音分析失败，请重试。'
+      },
+      detail: msg
+    });
+  }
+});
+
+detectRouter.post('/knowledge', async (req, res) => {
+  const { userId, question } = req.body as { userId: string; question?: string };
+
+  if (!userId || !question?.trim()) {
+    return res.status(400).json({ error: 'userId 和 question 必填' });
+  }
+
+  const cleanQuestion = question.trim().slice(0, 300);
+  try {
+    const prompt = `你是“校园安全知识助手”。请根据学生提问给出安全、温和、可执行的建议。
+提问：${cleanQuestion}
+
+请严格返回 JSON：
+{
+  "riskLevel": "低风险/中风险/高风险",
+  "answer": "80-220字，优先给具体行动建议；如有紧急危险，提醒立即报警并联系老师家长"
+}
+
+只返回 JSON，不要其他文字。`;
+
+    const raw = await baiduChat(prompt);
+    const parsed = parseModelJson(raw);
+    const result = {
+      riskLevel: (parsed.riskLevel || '低风险') as '低风险' | '中风险' | '高风险',
+      answer:
+        parsed.answer ||
+        '建议你先清晰描述“发生了什么、在什么地点、是否仍有风险”，我会给出更具体的安全建议。'
+    };
+
+    const { error: insertError } = await supabase.from('history_reports').insert({
+      user_id: userId,
+      type: '问答',
+      content: `问：${cleanQuestion}`,
+      risk_level: result.riskLevel,
+      suggestion: result.answer
+    });
+    if (insertError) console.error('Insert knowledge history error:', insertError);
+
+    return res.json({ result, stats: await getStats(userId) });
+  } catch (err) {
+    console.error('Knowledge QA error:', err);
+    const msg = err instanceof Error ? err.message : String(err);
+    return res.status(500).json({
+      result: {
+        riskLevel: '低风险',
+        answer: '知识问答服务暂时不可用，请稍后重试。'
       },
       detail: msg
     });

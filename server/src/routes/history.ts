@@ -29,7 +29,7 @@ historyRouter.get('/', async (req, res) => {
     const reports = (data || []).map((r) => ({
       id: r.id,
       timestamp: new Date(r.created_at as string).toLocaleString(),
-      type: r.type as '文本' | '语音',
+      type: r.type as '文本' | '语音' | '问答',
       content: r.content as string,
       result: {
         riskLevel: r.risk_level as '低风险' | '中风险' | '高风险',

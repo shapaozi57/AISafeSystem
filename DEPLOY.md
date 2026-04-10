@@ -58,7 +58,7 @@
 1. 打开 **Vercel** 项目 → **Settings** → **Environment Variables**。
 2. 新增或修改：
    - **Name**：`VITE_API_URL`
-   - **Value**：上一步复制的后端地址（如 `https://xxx.railway.app`）
+   - **Value**：上一步复制的后端地址（如 `https://你的服务.onrender.com`）
 3. 到 **Deployments** 里点 **Redeploy** 重新部署前端，使新环境变量生效。
 
 ---
@@ -70,8 +70,32 @@
 
 ---
 
+## 7. 部署后自检清单（稳定性）
+
+建议在答辩或上线前逐项勾选：
+
+- [ ] Render 服务状态为 **Live**，最近一次 Deploy 无报错  
+- [ ] `GET /api/health` 返回 `{"ok":true}`  
+- [ ] Vercel `VITE_API_URL` 与 Render 域名一致（`https`、无末尾 `/`）  
+- [ ] Vercel 已 **Redeploy**，避免沿用旧构建里的 `localhost`  
+- [ ] 注册、登录、文本检测、知识问答各走通一次  
+- [ ] 语音检测在 Render（Docker + ffmpeg）环境走通一次  
+- [ ] 手机 4G/5G 访问 Vercel 域名可登录（排除仅局域网可用）
+
+---
+
+## 8. 更新代码后的操作
+
+1. `git push` 到 GitHub。  
+2. **Render**：通常会自动触发新部署；若无，在 Dashboard 点 **Manual Deploy**。  
+3. **Vercel**：若仅改前端，会自动构建；若只改后端，无需重布前端，除非改了 `VITE_*` 等构建期变量。
+
+---
+
 ## 常见问题
 
 - **Build 失败**：查看 Render 的 **Events / Logs**，确认 `Dockerfile` 在仓库根目录，且能成功 `npm ci` 与 `npm run build`。
 - **运行时报错 SUPABASE_URL / KEY 未设置**：在 Render 的 Environment Variables 里再检查变量名是否与上面一致，保存后会自动重新部署。
 - **其他设备仍无法登录**：确认 Vercel 已配置 `VITE_API_URL` 并已 Redeploy；用手机直接访问 `https://你的后端地址/api/health` 能打开再试。
+- **Render 免费实例休眠**：首次访问可能较慢，等待数十秒再刷新；正式演示可提前打开页面“唤醒”服务。
+- **千帆 429 / 限流**：稍等 1～2 分钟再试；检查百度控制台配额与模型 TPM。
